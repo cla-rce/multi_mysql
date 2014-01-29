@@ -45,9 +45,9 @@ action :create do
     to "../../binaries/mysql-#{new_resource.version}"
   end
 
-  Dir.glob("#{instance_root}/server-current/*").map {|f| ::File.basename(f)}.each do |target|
+  ::Dir.glob("#{node['cla_mysql']['base_dir']}/binaries/mysql-#{new_resource.version}/*").map {|f| ::File.basename(f)}.each do |target|
     link "#{instance_root}/server/#{target}" do
-     to "../server-current/#{target}"
+      to "../server-current/#{target}"
     end
   end
 
