@@ -6,7 +6,7 @@ description      'Installs/Configures MySQL server for CLA-OIT'
 long_description IO.read(File.join(File.dirname(__FILE__), 'README.md'))
 version          '0.1.0'
 
-
 depends          'openssl', '~> 1.1'
 depends          'ark', '~> 0.4'
+
 supports         'ubuntu', '>= 12.04'

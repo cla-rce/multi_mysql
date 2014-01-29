@@ -24,6 +24,9 @@ directory '/db/binaries'
 directory '/db/instances'
 directory '/db/backups'
 
+# MySQL binaries are linked against libaio which isn't in a base install of Ubuntu 12.04
+package 'libaio1'
+
 node['cla_mysql']['mysql_binaries'].each_pair do |version, mysql|
 
   ark "mysql-#{version}" do
@@ -38,6 +41,17 @@ end
 node['cla_mysql']['instances'].each_pair do |instance_name, instance|
 
   instance_root = "/db/instances/#{instance_name}"
+
+  if instance['create_user']
+    group instance['group'] do
+      system true
+    end
+
+    user instance['user'] do
+      gid instance['group']
+      system true
+    end
+  end
 
   directory instance_root do
     owner instance['user']
@@ -73,14 +87,46 @@ node['cla_mysql']['instances'].each_pair do |instance_name, instance|
     mode 00755
   end
 
+  # Add Chef "link" resources to the run_list to generate symlink farm in "#{instance_root}/server".
+  # This needs to be done dynamically at converge time because the mysql binaries may not exist yet
+  # during compile time, since the resource ark[mysql-#{version}] will not have converged by then.
   ruby_block "create #{instance_root}/server symlinks" do
     block do
       Dir.glob("#{instance_root}/server-current/*").map {|f| File.basename(f)}.each do |target|
+        # Below is straight Ruby equivalent to the Chef DSL code:
+        #  link "#{instance_root}/server/#{target}" do
+        #    to "../server-current/#{target}"
+        #  end
         l = Chef::Resource::Link.new("#{instance_root}/server/#{target}", self.run_context)
         l.to("../server-current/#{target}")
         self.run_context.resource_collection.insert(l)
       end
     end
+  end
+
+  link "#{instance_root}/server/my.cnf" do
+    to '../etc/my.cnf'
+  end
+
+  execute "mysql_install_db-#{instance_name}" do
+    cwd "#{instance_root}/server"
+    command "scripts/mysql_install_db --basedir='#{instance_root}/server' --datadir='#{instance_root}/data' --user='#{instance['user']}'"
+    not_if { File.directory?("#{instance_root}/data/mysql") }
+  end
+
+  template "/etc/init.d/mysqld_#{instance_name}" do
+    source 'init.mysqld.erb'
+    owner 'root'
+    group 'root'
+    mode 00755
+    variables ({
+      instance_root: instance_root
+      })
+    notifies :restart, "service[mysqld_#{instance_name}]"
+  end
+
+  service "mysqld_#{instance_name}" do
+    action [:enable, :start]
   end
 
 end

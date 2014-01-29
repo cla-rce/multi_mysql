@@ -5,3 +5,5 @@ default['cla_mysql']['instances']['default']['user'] = 'mysql'
 default['cla_mysql']['instances']['default']['group'] = 'mysql'
 default['cla_mysql']['instances']['default']['create_user'] = true
 default['cla_mysql']['instances']['default']['version'] = '5.6.15'
+
+default['cla_mysql']['instances']['default']['config'] = {}
