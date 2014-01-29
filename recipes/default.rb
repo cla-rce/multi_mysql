@@ -114,6 +114,23 @@ node['cla_mysql']['instances'].each_pair do |instance_name, instance|
     not_if { File.directory?("#{instance_root}/data/mysql") }
   end
 
+  ::Chef::Recipe.send(:include, Opscode::OpenSSL::Password)
+  node.set_unless['cla_mysql']['instances'][instance_name]['server_root_password'] = secure_password
+
+  template "#{instance_root}/etc/grants.sql" do
+    source 'grants.sql.erb'
+    variables ({instance_root: instance_root})
+    owner 'root'
+    group 'root'
+    mode 00600
+    notifies :run, "execute[install-grants-#{instance_root}]", :immediately
+  end
+
+  execute "install-grants-#{instance_root}" do
+    command "#{instance_root}/server/bin/mysql -u root"
+    action :nothing
+  end
+
   template "/etc/init.d/mysqld_#{instance_name}" do
     source 'init.mysqld.erb'
     owner 'root'
