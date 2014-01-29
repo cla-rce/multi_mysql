@@ -61,9 +61,19 @@ action :create do
     not_if { ::File.directory?("#{instance_root}/data/mysql") }
   end
 
+  config_hash = {mysqld: {socket: "#{instance_root}/mysql.sock"}}
+  config_text = ''
+  Chef::Mixin::DeepMerge.deep_merge(new_resource.config, config_hash) if new_resource.config
+  config_hash.each_pair do |key,value|
+    config_text << "[#{key}]\n"
+    value.each_pair do |key,value|
+      config_text << "#{key}" << (value ? " = #{value}\n" : "\n")
+    end
+  end
+
   template "#{instance_root}/etc/my.cnf" do
     source 'my.cnf.erb'
-    variables ({my_cnf: "[mysqld]\nsocket = #{instance_root}/mysql.sock"})
+    variables ({my_cnf: config_text})
     notifies :restart, "service[mysqld_#{new_resource.instance_name}]"
   end
 
