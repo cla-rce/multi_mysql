@@ -101,7 +101,10 @@ action :create do
   end
 
   # We've just set the root password on this instance. Save the node object so we don't lose the generated password.
-  node.save unless Chef::Config[:solo]
+  ruby_block 'save-node-mysql-#{new_resource.instance_name}' do
+    block { node.save }
+    not_if Chef::Config[:solo]
+  end
 
   template "#{instance_root}/etc/grants.sql" do
     source 'grants.sql.erb'
