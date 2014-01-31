@@ -1,4 +1,4 @@
-# cla_mysql cookbook
+# multi_mysql cookbook
 
 # Requirements
 

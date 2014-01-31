@@ -16,5 +16,5 @@ platforms:
 suites:
   - name: default
     run_list:
-      - recipe[cla_mysql::default]
+      - recipe[multi_mysql::default]
     attributes:

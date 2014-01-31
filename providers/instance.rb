@@ -7,7 +7,7 @@ def whyrun_supported?
 end
 
 action :create do
-  instance_root = ::File.join(node['cla_mysql']['base_dir'], 'instances', new_resource.instance_name)
+  instance_root = ::File.join(node['multi_mysql']['base_dir'], 'instances', new_resource.instance_name)
 
   # Create service account and group if specified
   if new_resource.create_user
@@ -45,7 +45,7 @@ action :create do
     to "../../binaries/mysql-#{new_resource.version}"
   end
 
-  ::Dir.glob("#{node['cla_mysql']['base_dir']}/binaries/mysql-#{new_resource.version}/*").map {|f| ::File.basename(f)}.each do |target|
+  ::Dir.glob("#{node['multi_mysql']['base_dir']}/binaries/mysql-#{new_resource.version}/*").map {|f| ::File.basename(f)}.each do |target|
     link "#{instance_root}/server/#{target}" do
       to "../server-current/#{target}"
     end
@@ -93,7 +93,7 @@ action :create do
     action [:enable, :start]
   end
 
-  node.set_unless['cla_mysql']['instances'][new_resource.instance_name]['server_root_password'] = secure_password
+  node.set_unless['multi_mysql']['instances'][new_resource.instance_name]['server_root_password'] = secure_password
 
   template "#{instance_root}/etc/grants.sql" do
     source 'grants.sql.erb'
@@ -101,7 +101,7 @@ action :create do
     owner 'root'
     group 'root'
     mode 00600
-    variables ({server_root_password: node['cla_mysql']['instances'][new_resource.instance_name]['server_root_password']})
+    variables ({server_root_password: node['multi_mysql']['instances'][new_resource.instance_name]['server_root_password']})
     notifies :run, "execute[install-grants-#{new_resource.instance_name}]", :immediately
   end
 

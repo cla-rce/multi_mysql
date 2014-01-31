@@ -1,5 +1,5 @@
 #
-# Cookbook Name:: cla_mysql
+# Cookbook Name:: multi_mysql
 # Recipe:: default
 #
 # Copyright (C) 2014 Adam Mielke, (C) Regents of the University of Minnesota
@@ -19,7 +19,7 @@
 
 # Set up directory structure
 %w(binaries instances backups).each do |subdir|
-  directory "#{node['cla_mysql']['base_dir']}/#{subdir}" do
+  directory "#{node['multi_mysql']['base_dir']}/#{subdir}" do
     recursive true
     owner 'root'
     group 'root'
@@ -27,12 +27,12 @@
   end
 end
 
-cla_mysql_package node['cla_mysql']['default_package']['version'] do
-  url node['cla_mysql']['default_package']['url']
-  checksum node['cla_mysql']['default_package']['checksum']
+multi_mysql_package node['multi_mysql']['default_package']['version'] do
+  url node['multi_mysql']['default_package']['url']
+  checksum node['multi_mysql']['default_package']['checksum']
 end
 
-cla_mysql_instance 'default' do
+multi_mysql_instance 'default' do
   user 'mysql'
   group 'mysql'
   create_user true
