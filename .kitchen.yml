@@ -8,6 +8,8 @@ provisioner:
 platforms:
   - name: ubuntu-12.04
     driver:
+      network:
+      - ["private_network", {ip: "172.16.1.2"}]
       customize:
         memory: 1024
     run_list:
