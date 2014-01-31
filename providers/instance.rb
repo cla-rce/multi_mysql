@@ -95,6 +95,14 @@ action :create do
 
   node.set_unless['multi_mysql']['instances'][new_resource.instance_name]['server_root_password'] = secure_password
 
+  execute 'assign-root-password-#{new_resource.instance_name}' do
+    command "#{instance_root}/server/bin/mysqladmin -S '#{instance_root}/mysql.sock' -u root password '#{node['multi_mysql']['instances'][new_resource.instance_name]['server_root_password']}'" 
+    only_if "#{instance_root}/server/bin/mysql -S '#{instance_root}/mysql.sock' -u root -e 'show databases;'"
+  end
+
+  # We've just set the root password on this instance. Save the node object so we don't lose the generated password.
+  node.save unless Chef::Config[:solo]
+
   template "#{instance_root}/etc/grants.sql" do
     source 'grants.sql.erb'
     variables ({instance_root: instance_root})
@@ -106,7 +114,7 @@ action :create do
   end
 
   execute "install-grants-#{new_resource.instance_name}" do
-    command "#{instance_root}/server/bin/mysql -S '#{instance_root}/mysql.sock' -u root < '#{instance_root}/etc/grants.sql'"
+    command "#{instance_root}/server/bin/mysql -S '#{instance_root}/mysql.sock' -u root < '#{instance_root}/etc/grants.sql' -p'#{node['multi_mysql']['instances'][new_resource.instance_name]['server_root_password']}'"
     action :nothing
   end
 
