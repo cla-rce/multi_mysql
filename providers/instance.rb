@@ -128,6 +128,7 @@ action :create do
     owner 'root'
     group 'root'
     mode 00600
+    variables ({server_root_password: node['multi_mysql']['instances'][new_resource.instance_name]['server_root_password']})
     notifies :run, "execute[install-grants-#{new_resource.instance_name}]", :immediately
   end
 
