@@ -17,16 +17,6 @@
 # limitations under the License.
 #
 
-# Set up directory structure
-%w(binaries instances backups).each do |subdir|
-  directory "#{node['multi_mysql']['base_dir']}/#{subdir}" do
-    recursive true
-    owner 'root'
-    group 'root'
-    mode 00755
-  end
-end
-
 multi_mysql_package node['multi_mysql']['default_package']['version'] do
   url node['multi_mysql']['default_package']['url']
   checksum node['multi_mysql']['default_package']['checksum']

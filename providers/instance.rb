@@ -7,7 +7,8 @@ def whyrun_supported?
 end
 
 action :create do
-  instance_root = ::File.join(node['multi_mysql']['base_dir'], 'instances', new_resource.instance_name)
+  instances_dir = ::File.join(node['multi_mysql']['base_dir'], 'instances')
+  instance_root = ::File.join(instances_dir, new_resource.instance_name)
 
   # Create service account and group if specified
   if new_resource.create_user
@@ -19,6 +20,18 @@ action :create do
       gid new_resource.group
       system true
     end
+  end
+
+  directory instances_dir do
+    owner root
+    group root
+    mode 00755
+  end
+
+  directory instance_root do
+    owner new_resource.user
+    group new_resource.group
+    mode 00755
   end
 
   directory instance_root do
@@ -43,6 +56,7 @@ action :create do
 
   link "#{instance_root}/server-current" do
     to "../../binaries/mysql-#{new_resource.version}"
+    not_if { ::File.symlink?("#{instance_root}/server-current") } # Don't overwrite if this symlink has been created -- could harm an existing instance
   end
 
   ::Dir.glob("#{node['multi_mysql']['base_dir']}/binaries/mysql-#{new_resource.version}/*").map {|f| ::File.basename(f)}.each do |target|
@@ -98,11 +112,13 @@ action :create do
   execute 'assign-root-password-#{new_resource.instance_name}' do
     command "#{instance_root}/server/bin/mysqladmin -S '#{instance_root}/mysql.sock' -u root password '#{node['multi_mysql']['instances'][new_resource.instance_name]['server_root_password']}'" 
     only_if "#{instance_root}/server/bin/mysql -S '#{instance_root}/mysql.sock' -u root -e 'show databases;'"
+    notifies :create, "ruby_block[save-node-mysql-#{new_resource.instance_name}]"
   end
 
   # We've just set the root password on this instance. Save the node object so we don't lose the generated password.
   ruby_block 'save-node-mysql-#{new_resource.instance_name}' do
     block { node.save }
+    action :nothing
     not_if { Chef::Config[:solo] }
   end
 
@@ -112,7 +128,6 @@ action :create do
     owner 'root'
     group 'root'
     mode 00600
-    variables ({server_root_password: node['multi_mysql']['instances'][new_resource.instance_name]['server_root_password']})
     notifies :run, "execute[install-grants-#{new_resource.instance_name}]", :immediately
   end
 
