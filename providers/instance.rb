@@ -75,7 +75,14 @@ action :create do
     not_if { ::File.directory?("#{instance_root}/data/mysql") }
   end
 
-  config_hash = {mysqld: {socket: "#{instance_root}/mysql.sock"}}
+  config_hash = { mysqld: 
+                  { socket: "#{instance_root}/mysql.sock", 
+                    user: new_resource.user,
+                    general_log_file: "#{instance_root}/log/mysql.log",
+                    slow_query_log_file: "#{instance_root}/log/mysql-slow.log",
+                    log_error: "#{instance_root}/log/mysql.err"
+                  }
+                }
   config_text = ''
   Chef::Mixin::DeepMerge.deep_merge(new_resource.config, config_hash) if new_resource.config
   config_hash.each_pair do |key,value|
@@ -87,6 +94,7 @@ action :create do
 
   template "#{instance_root}/etc/my.cnf" do
     source 'my.cnf.erb'
+    cookbook 'multi_mysql'
     variables ({my_cnf: config_text})
     notifies :restart, "service[mysqld_#{new_resource.instance_name}]"
   end
@@ -96,6 +104,7 @@ action :create do
     owner 'root'
     group 'root'
     mode 00755
+    cookbook 'multi_mysql'
     variables ({
       instance_root: instance_root
       })
@@ -128,6 +137,7 @@ action :create do
     owner 'root'
     group 'root'
     mode 00600
+    cookbook 'multi_mysql'
     variables ({server_root_password: node['multi_mysql']['instances'][new_resource.instance_name]['server_root_password']})
     notifies :run, "execute[install-grants-#{new_resource.instance_name}]", :immediately
   end
