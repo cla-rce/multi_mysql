@@ -20,3 +20,7 @@ suites:
     run_list:
       - recipe[multi_mysql::default]
     attributes:
+      multi_mysql:
+        instances:
+          default:
+            server_root_password: "rootpass"
