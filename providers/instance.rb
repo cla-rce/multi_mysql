@@ -23,8 +23,8 @@ action :create do
   end
 
   directory instances_dir do
-    owner root
-    group root
+    owner 'root'
+    group 'root'
     mode 00755
   end
 
@@ -116,7 +116,7 @@ action :create do
   end
 
   # We've just set the root password on this instance. Save the node object so we don't lose the generated password.
-  ruby_block 'save-node-mysql-#{new_resource.instance_name}' do
+  ruby_block "save-node-mysql-#{new_resource.instance_name}" do
     block { node.save }
     action :nothing
     not_if { Chef::Config[:solo] }
