@@ -40,7 +40,7 @@ action :create do
     mode 00755
   end
 
-  %w(data log server).each do |subdir|
+  %w(data log).each do |subdir|
     directory ::File.join(instance_root, subdir) do
       owner new_resource.user
       group new_resource.group
@@ -59,19 +59,9 @@ action :create do
     not_if { ::File.symlink?("#{instance_root}/server-current") } # Don't overwrite if this symlink has been created -- could harm an existing instance
   end
 
-  ::Dir.glob("#{node['multi_mysql']['base_dir']}/binaries/mysql-#{new_resource.version}/*").map {|f| ::File.basename(f)}.each do |target|
-    link "#{instance_root}/server/#{target}" do
-      to "../server-current/#{target}"
-    end
-  end
-
-  link "#{instance_root}/server/my.cnf" do
-    to '../etc/my.cnf'
-  end
-
   execute "mysql_install_db-#{new_resource.instance_name}" do
     cwd "#{instance_root}/server"
-    command "scripts/mysql_install_db --basedir='#{instance_root}/server' --datadir='#{instance_root}/data' --user='#{new_resource.user}'"
+    command "scripts/mysql_install_db --defaults-file='#{instance_root}/etc/my.cnf' --basedir='#{instance_root}/server' --datadir='#{instance_root}/data' --user='#{new_resource.user}'"
     not_if { ::File.directory?("#{instance_root}/data/mysql") }
   end
 
@@ -119,8 +109,8 @@ action :create do
   node.set_unless['multi_mysql']['instances'][new_resource.instance_name]['server_root_password'] = secure_password
 
   execute "assign-root-password-#{new_resource.instance_name}" do
-    command "#{instance_root}/server/bin/mysqladmin -S '#{instance_root}/mysql.sock' -u root password '#{node['multi_mysql']['instances'][new_resource.instance_name]['server_root_password']}'" 
-    only_if "#{instance_root}/server/bin/mysql -S '#{instance_root}/mysql.sock' -u root -e 'show databases;'"
+    command "#{instance_root}/server/bin/mysqladmin  --defaults-file='#{instance_root}/etc/my.cnf' -S '#{instance_root}/mysql.sock' -u root password '#{node['multi_mysql']['instances'][new_resource.instance_name]['server_root_password']}'" 
+    only_if "#{instance_root}/server/bin/mysql  --defaults-file='#{instance_root}/etc/my.cnf' -S '#{instance_root}/mysql.sock' -u root -e 'show databases;'"
     notifies :create, "ruby_block[save-node-mysql-#{new_resource.instance_name}]"
   end
 
@@ -143,7 +133,7 @@ action :create do
   end
 
   execute "install-grants-#{new_resource.instance_name}" do
-    command "#{instance_root}/server/bin/mysql -S '#{instance_root}/mysql.sock' -u root < '#{instance_root}/etc/grants.sql' -p'#{node['multi_mysql']['instances'][new_resource.instance_name]['server_root_password']}'"
+    command "#{instance_root}/server/bin/mysql --defaults-file='#{instance_root}/etc/my.cnf' -S '#{instance_root}/mysql.sock' -u root < '#{instance_root}/etc/grants.sql' -p'#{node['multi_mysql']['instances'][new_resource.instance_name]['server_root_password']}'"
     action :nothing
   end
 
