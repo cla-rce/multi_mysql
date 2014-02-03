@@ -7,12 +7,15 @@ end
 action :install do
   package 'libaio1'
 
-  install_dir = ::File.join(node['multi_mysql']['base_dir'], "binaries")
+  base_dir = node['multi_mysql']['base_dir']
+  install_dir = ::File.join(base_dir, "binaries")
 
-  directory install_dir do
-    owner 'root'
-    group 'root'
-    mode 00755
+  [base_dir, install_dir].each do |subdir|
+    directory subdir do
+      owner 'root'
+      group 'root'
+      mode 00755
+    end
   end
 
   ark "mysql-#{new_resource.version}" do
