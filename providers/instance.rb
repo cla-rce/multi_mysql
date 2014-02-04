@@ -54,19 +54,21 @@ action :create do
     mode 00755
   end
 
-  link "#{instance_root}/server-current" do
+  link "#{instance_root}/server" do
     to "../../binaries/mysql-#{new_resource.version}"
-    not_if { ::File.symlink?("#{instance_root}/server-current") } # Don't overwrite if this symlink has been created -- could harm an existing instance
+    not_if { ::File.symlink?("#{instance_root}/server") } # Don't overwrite if this symlink has been created -- could harm an existing instance
   end
 
   execute "mysql_install_db-#{new_resource.instance_name}" do
     cwd "#{instance_root}/server"
-    command "scripts/mysql_install_db --defaults-file='#{instance_root}/etc/my.cnf' --basedir='#{instance_root}/server' --datadir='#{instance_root}/data' --user='#{new_resource.user}'"
+    command "scripts/mysql_install_db --no-defaults --basedir='#{instance_root}/server' --datadir='#{instance_root}/data' --user='#{new_resource.user}'"
     not_if { ::File.directory?("#{instance_root}/data/mysql") }
   end
 
   config_hash = { mysqld: 
-                  { socket: "#{instance_root}/mysql.sock", 
+                  { basedir: "#{instance_root}/server",
+                    datadir: "#{instance_root}/data",
+                    socket: "#{instance_root}/mysql.sock", 
                     user: new_resource.user,
                     general_log_file: "#{instance_root}/log/mysql.log",
                     slow_query_log_file: "#{instance_root}/log/mysql-slow.log",
