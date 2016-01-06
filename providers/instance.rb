@@ -55,8 +55,10 @@ action :create do
   end
 
   link "#{instance_root}/server" do
-    to "../../binaries/mysql-#{new_resource.version}"
-    not_if { ::File.symlink?("#{instance_root}/server") } # Don't overwrite if this symlink has been created -- could harm an existing instance
+    to "../../binaries/#{new_resource.distribution}-#{new_resource.version}"
+    # Don't overwrite if the symlink has already been created -
+    # could harm an existing instance.
+    not_if { ::File.symlink?("#{instance_root}/server") }
   end
 
   execute "mysql_install_db-#{new_resource.instance_name}" do
@@ -65,10 +67,10 @@ action :create do
     not_if { ::File.directory?("#{instance_root}/data/mysql") }
   end
 
-  config_hash = { mysqld: 
+  config_hash = { mysqld:
                   { basedir: "#{instance_root}/server",
                     datadir: "#{instance_root}/data",
-                    socket: "#{instance_root}/mysql.sock", 
+                    socket: "#{instance_root}/mysql.sock",
                     user: new_resource.user,
                     general_log_file: "#{instance_root}/log/mysql.log",
                     slow_query_log_file: "#{instance_root}/log/mysql-slow.log",
@@ -108,20 +110,7 @@ action :create do
     action [:enable, :start]
   end
 
-  node.set_unless['multi_mysql']['instances'][new_resource.instance_name]['server_root_password'] = secure_password
-
-  execute "assign-root-password-#{new_resource.instance_name}" do
-    command "#{instance_root}/server/bin/mysqladmin  --defaults-file='#{instance_root}/etc/my.cnf' -S '#{instance_root}/mysql.sock' -u root password '#{node['multi_mysql']['instances'][new_resource.instance_name]['server_root_password']}'" 
-    only_if "#{instance_root}/server/bin/mysql  --defaults-file='#{instance_root}/etc/my.cnf' -S '#{instance_root}/mysql.sock' -u root -e 'show databases;'"
-    notifies :create, "ruby_block[save-node-mysql-#{new_resource.instance_name}]"
-  end
-
-  # We've just set the root password on this instance. Save the node object so we don't lose the generated password.
-  ruby_block "save-node-mysql-#{new_resource.instance_name}" do
-    block { node.save }
-    action :nothing
-    not_if { Chef::Config[:solo] }
-  end
+  node.set_unless['multi_mysql']['instances'][new_resource.instance_name]['server_root_password'] = secure_password()
 
   template "#{instance_root}/etc/grants.sql" do
     source 'grants.sql.erb'
@@ -129,14 +118,25 @@ action :create do
     owner 'root'
     group 'root'
     mode 00600
+    sensitive true
     cookbook 'multi_mysql'
     variables ({server_root_password: node['multi_mysql']['instances'][new_resource.instance_name]['server_root_password']})
     notifies :run, "execute[install-grants-#{new_resource.instance_name}]", :immediately
   end
 
-  execute "install-grants-#{new_resource.instance_name}" do
-    command "#{instance_root}/server/bin/mysql --defaults-file='#{instance_root}/etc/my.cnf' -S '#{instance_root}/mysql.sock' -u root < '#{instance_root}/etc/grants.sql' -p'#{node['multi_mysql']['instances'][new_resource.instance_name]['server_root_password']}'"
+  ruby_block "save-node-mysql-#{new_resource.instance_name}" do
+    block { node.save }
     action :nothing
+    not_if { Chef::Config[:solo] }
+  end
+
+  execute "install-grants-#{new_resource.instance_name}" do
+    command "#{instance_root}/server/bin/mysql --defaults-file='#{instance_root}/etc/my.cnf' -S '#{instance_root}/mysql.sock' -u root < '#{instance_root}/etc/grants.sql'"
+    only_if "#{instance_root}/server/bin/mysql --defaults-file='#{instance_root}/etc/my.cnf' -S '#{instance_root}/mysql.sock' -u root -e 'show databases;'"
+    action :nothing
+    # We've just set the root password for this instance. We need to save
+    # the node object so we don't lose the generated password.
+    notifies :create, "ruby_block[save-node-mysql-#{new_resource.instance_name}]"
   end
 
 end

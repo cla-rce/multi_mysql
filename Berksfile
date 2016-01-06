@@ -1,8 +1,16 @@
 #!/usr/bin/env ruby
-site :opscode
+# ^This line is only for syntax detection
 
-cookbook 'apt'
-#cookbook 'mysqld', github: 'cla-rce/mysqld', ref: 'a771d29b311fde64de0655f4ec5d83141c92a006'
-#cookbook 'mysqld', path: '../mysqld'
+source "https://supermarket.getchef.com/"
 
 metadata
+
+cookbook "apt"
+
+cookbook "ark"
+
+cookbook "mysql",
+  git: "git@github.com:cla-rce/mysql.git",
+  tag: "v5.6.3+ubuntu-fix"
+
+cookbook "openssl"

@@ -6,6 +6,7 @@ end
 
 action :install do
   package 'libaio1'
+  package 'libjemalloc1'
 
   base_dir = node['multi_mysql']['base_dir']
   install_dir = ::File.join(base_dir, "binaries")
@@ -18,7 +19,7 @@ action :install do
     end
   end
 
-  ark "mysql-#{new_resource.version}" do
+  ark "#{new_resource.distribution}-#{new_resource.version}" do
     url new_resource.url
     checksum new_resource.checksum
     path install_dir
