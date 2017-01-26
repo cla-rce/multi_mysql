@@ -1,9 +1,9 @@
 require 'spec_helper'
 
-dist = 'mysql'
-ver = '5.6.28'
-# dist = 'mariadb'
-# ver = '10.1.10'
+# dist = 'mysql'
+# ver = '5.6.28'
+dist = 'mariadb'
+ver = '10.1.21'
 
 describe service('mysqld_default') do
   it { should be_enabled }

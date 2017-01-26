@@ -1,6 +1,8 @@
 use_inline_resources
 
-include Opscode::OpenSSL::Password
+# Import the RandomPassword module from the OpenSSL cookbook, which includes a
+# random_password function we'll use later.
+include OpenSSLCookbook::RandomPassword
 
 def whyrun_supported?
   true
@@ -110,7 +112,16 @@ action :create do
     action [:enable, :start]
   end
 
-  node.set_unless['multi_mysql']['instances'][new_resource.instance_name]['server_root_password'] = secure_password()
+  # random_password() (from the OpenSSLCookbook::RandomPassword module)
+  # defaults to 20 bytes long and hex characters only - we specify base64
+  # to include all letters+numbers (plus a few special characters).
+  if node['multi_mysql']['instances'].nil? || node['multi_mysql']['instances'][new_resource.instance_name]['server_root_password'].nil?
+    node.normal['multi_mysql']['instances'][new_resource.instance_name]['server_root_password'] = random_password(:mode => :base64, :encoding => "ASCII")
+    if Chef::Config.local_mode
+      node.normal['multi_mysql']['instances'][new_resource.instance_name]['server_root_password'] = node['multi_mysql']['testing_password']
+    end
+    node.save
+  end
 
   template "#{instance_root}/etc/grants.sql" do
     source 'grants.sql.erb'
@@ -124,19 +135,10 @@ action :create do
     notifies :run, "execute[install-grants-#{new_resource.instance_name}]", :immediately
   end
 
-  ruby_block "save-node-mysql-#{new_resource.instance_name}" do
-    block { node.save }
-    action :nothing
-    not_if { Chef::Config[:solo] }
-  end
-
   execute "install-grants-#{new_resource.instance_name}" do
     command "#{instance_root}/server/bin/mysql --defaults-file='#{instance_root}/etc/my.cnf' -S '#{instance_root}/mysql.sock' -u root < '#{instance_root}/etc/grants.sql'"
     only_if "#{instance_root}/server/bin/mysql --defaults-file='#{instance_root}/etc/my.cnf' -S '#{instance_root}/mysql.sock' -u root -e 'show databases;'"
     action :nothing
-    # We've just set the root password for this instance. We need to save
-    # the node object so we don't lose the generated password.
-    notifies :create, "ruby_block[save-node-mysql-#{new_resource.instance_name}]"
   end
 
 end
